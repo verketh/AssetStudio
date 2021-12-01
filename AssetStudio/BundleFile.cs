@@ -40,10 +40,41 @@ namespace AssetStudio
         private Node[] m_DirectoryInfo;
 
         public StreamFile[] fileList;
-
+        /// <summary>
+        /// 跳过多个UnityFS头
+        /// </summary>
+        /// <param name="reader"></param>
+        /// <returns></returns>
+        private long FindUnityFSPosition(FileReader reader){
+            string unityfs = "UnityFS";
+            long length = reader.BaseStream.Length < 100 ? reader.BaseStream.Length : 100;
+            long start = reader.Position;
+            for (int i = 0; i < length; i++)
+            {
+                int k = 0;
+                for (; k < unityfs.Length; k++)
+                {
+                    if(reader.Position >= reader.BaseStream.Length){
+                        break;
+                    }
+                    if(unityfs[k] != reader.ReadByte()){
+                        break;
+                    }
+                }
+                if(k == unityfs.Length){
+                    start = reader.Position - k;
+                }
+                if(k > 0 && reader.Position > 0){
+                    reader.Position = reader.Position - 1;
+                }
+            }
+            reader.Position = start;
+            return start;
+        }
         public BundleFile(FileReader reader)
         {
             m_Header = new Header();
+            FindUnityFSPosition(reader);
             m_Header.signature = reader.ReadStringToNull();
             m_Header.version = reader.ReadUInt32();
             m_Header.unityVersion = reader.ReadStringToNull();
